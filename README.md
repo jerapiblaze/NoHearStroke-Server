@@ -1,4 +1,4 @@
-# NoHeatStroke -- Microprocesors Project
+# NoHeatStroke-Server -- Microprocesors Project
 
 This is the server to handle data sent from [NoHeatStroke-ESP32](https://github.com/jerapiblaze/NoHeatStroke-ESP32), then provides a web interface as well as an REST API service allow users to read sensor data.
 
