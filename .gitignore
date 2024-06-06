@@ -1,0 +1,4 @@
+app_data/*
+!app_data/.gitkeep
+.env
+node_modules

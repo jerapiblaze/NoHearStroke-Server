@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>SENSOR READ</title>
+    </head>
+    <body>
+        <h1>Temerature reading</h1>
+        <section>
+            <h2>Device: <i id="deviceid">{{DEVICE_ID}}</i></h2>
+            <p>Status: <b id="status">OK</b></p>
+            <p>Refresh: <b id="rate"></b>s</p>
+            <p>Last fetch: <i id="lasttime"><i></i><p>
+            <p style="font-family:'Courier New', Courier, monospace;">Temperature: <b id="temp" style="color:blue;">{{TEMP}}</b>℃</p>
+            <p style="font-family:'Courier New', Courier, monospace;">Humidity: <b id="humi" style="color:blue;">{{HUMI}}</b>%</p>
+            <p style="font-family:'Courier New', Courier, monospace;">Heat Index: <b id="hind" style="color:blue;">{{HIND}}</b></p>
+            <p style="font-family:'Courier New', Courier, monospace;">Condition: <b id="feel">{{FEEL}}</b></p>
+            <section id="hist", style="font-family: 'Courier New', Courier, monospace;color: grey;">
+
+            </section>
+        </section>
+        <script>
+            const SERVER_ADDRESS = "http://localhost:3000"
+            const server_endpoint = "/api/v1/sensor0"
+            function precise(x) {
+                return x.toPrecision(5);
+            }
+            async function requestData(did, n){
+                try{
+                    let serverReponse = await call_server(`api/v1/sensor0?did=${did}&n=${n}`)
+                    if (serverReponse.status != 200){
+                        throw "Fetch error!"
+                    }
+                    let data = await serverReponse.json()
+                    let lines = `<p><b>Last ${n} records</b></p>`
+                    let t = data[0].t;
+                    let h = data[0].h;
+                    let hi = data[0].hi;
+                    data.forEach(r => {
+                        let line = `<p>T=<b>${precise(r.t)}</b>℃ H=<b>${precise(r.h)}</b>% HI=<b>${precise(r.hi)}</b> time=<i>${r.createdAt}</i></p>`
+                        lines = lines.concat(line)
+                    });
+                    document.getElementById("deviceid").innerHTML = did
+                    document.getElementById("temp").innerHTML = precise(t)
+                    document.getElementById("humi").innerHTML = precise(h)
+                    document.getElementById("hind").innerHTML = precise(hi)
+                    document.getElementById("hist").innerHTML = lines
+                    if (hi < 80){
+                        document.getElementById("feel").setAttribute("style", "color:green")
+                        document.getElementById("feel").innerHTML = "normal"
+                    }
+                    if (hi >= 80 && hi < 90){
+                        document.getElementById("feel").setAttribute("style", "color:yellow")
+                        document.getElementById("feel").innerHTML = "warning"
+                    }
+                    if (hi >= 90 && hi < 105){
+                        document.getElementById("feel").setAttribute("style", "color:red")
+                        document.getElementById("feel").innerHTML = "danger"
+                    }
+                    if (hi >= 105 && hi < 130){
+                        document.getElementById("feel").setAttribute("style", "color:red")
+                        document.getElementById("feel").innerHTML = "extremely danger"
+                    }
+                    if (hi >= 130){
+                        document.getElementById("feel").setAttribute("style", "color:red")
+                        document.getElementById("feel").innerHTML = "extra extremely danger"
+                    }
+                    let now = Date.now()
+                    let last = Date.parse(data[0].createdAt)
+                    if ((now - last) < 30000){
+                        document.getElementById("status").setAttribute("style", "color:green")
+                        document.getElementById("status").innerHTML = "OK"
+                    } else {
+                        document.getElementById("status").setAttribute("style", "color:yellow")
+                        document.getElementById("status").innerHTML = "Device is offline"
+                        showUnknownValues()
+                    }
+                    document.getElementById("lasttime").innerHTML = Date()
+                } catch (e){
+                    console.log(e)
+                    console.error("Cannot fetch from server")
+                    document.getElementById("status").setAttribute("style", "color:red")
+                    document.getElementById("status").innerHTML = "Failed to get data. (maybe server is down)"
+                    showUnknownValues()
+                }
+            }
+            function showUnknownValues(){
+                document.getElementById("temp").innerHTML = "--"
+                document.getElementById("humi").innerHTML = "--"
+                document.getElementById("hind").innerHTML = "--"
+                document.getElementById("feel").setAttribute("style", "color:grey")
+                document.getElementById("feel").innerHTML = "unknown"
+            }
+            async function call_server(uri = "", method = "GET", body = null, timeout=5000) {
+                let requestBody_str = JSON.stringify(body)
+                let requestEndpoint = `${SERVER_ADDRESS}/${uri}`
+                // let token = getCookie("token")
+                let requestOptions = {
+                    method: method,
+                    // mode: "no-cors",
+                    headers: {
+                        "Accept": "*/*",
+                        "Content-Type": "application/json",
+                        "Connection": "keep-alive",
+                        "Content-Length": requestBody_str.length,
+                        // "access_token": token
+                    },
+                    body: body ? requestBody_str : null,
+                    signal: AbortSignal.timeout(timeout)
+                }
+                return fetch(requestEndpoint, requestOptions)
+            }
+            function refresh(){
+                let did = document.getElementById("deviceid").innerHTML
+                console.log(did)
+            }
+            // setInterval()
+            let params = new URLSearchParams(document.location.search);
+            let did = params.get("did"); // is the string "Jonathan"
+            let n = params.get("n")
+            let t = params.get("t")
+            if (did == null){
+                throw "NULL DEVICE"
+            }
+            if (t == null){
+                t = 5*1000
+            } else {
+                t = t*1000
+            }
+            // requestData(did, n)
+            requestData(did, n)
+            document.getElementById("rate").innerHTML = t/1000
+            setInterval(requestData, t, did, n)
+            // console.log(did, n)
+        </script>
+    </body>
+</html>
