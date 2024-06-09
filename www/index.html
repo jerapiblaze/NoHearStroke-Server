@@ -27,43 +27,55 @@
             }
             async function requestData(did, n){
                 try{
+                    document.getElementById("lasttime").innerHTML = Date()
                     let serverReponse = await call_server(`api/v1/sensor0?did=${did}&n=${n}`)
                     if (serverReponse.status != 200){
                         throw "Fetch error!"
                     }
+                    document.getElementById("deviceid").innerHTML = did
                     let data = await serverReponse.json()
                     let lines = `<p><b>Last ${n} records</b></p>`
                     let t = data[0].t;
                     let h = data[0].h;
                     let hi = data[0].hi;
                     data.forEach(r => {
-                        let line = `<p>T=<b>${precise(r.t)}</b>℃ H=<b>${precise(r.h)}</b>% HI=<b>${precise(r.hi)}</b> time=<i>${r.createdAt}</i></p>`
+                        let line = ""
+                        if (r.t == null || r.h == null || r.hi == null){
+                            line = `<p>BROKEN_RECORD time=<i>${r.createdAt}</i></p>`
+                        } else {
+                            line = `<p>T=<b>${precise(r.t)}</b>℃ H=<b>${precise(r.h)}</b>% HI=<b>${precise(r.hi)}</b> time=<i>${r.createdAt}</i></p>`
+                        }
                         lines = lines.concat(line)
                     });
-                    document.getElementById("deviceid").innerHTML = did
+                    document.getElementById("hist").innerHTML = lines
+                    if (t == null || h == null || hi == null){
+                        document.getElementById("status").setAttribute("style", "color:yellow")
+                        document.getElementById("status").innerHTML = "Device has error!"
+                        showUnknownValues()
+                        return
+                    }
                     document.getElementById("temp").innerHTML = precise(t)
                     document.getElementById("humi").innerHTML = precise(h)
                     document.getElementById("hind").innerHTML = precise(hi)
-                    document.getElementById("hist").innerHTML = lines
-                    if (hi < 80){
+                    if (hi < 27){
                         document.getElementById("feel").setAttribute("style", "color:green")
                         document.getElementById("feel").innerHTML = "normal"
                     }
-                    if (hi >= 80 && hi < 90){
+                    if (hi >= 27 && hi < 32){
                         document.getElementById("feel").setAttribute("style", "color:yellow")
-                        document.getElementById("feel").innerHTML = "warning"
+                        document.getElementById("feel").innerHTML = "caution"
                     }
-                    if (hi >= 90 && hi < 105){
+                    if (hi >= 32 && hi < 41){
+                        document.getElementById("feel").setAttribute("style", "color:red")
+                        document.getElementById("feel").innerHTML = "extra caution"
+                    }
+                    if (hi >= 41 && hi < 54){
                         document.getElementById("feel").setAttribute("style", "color:red")
                         document.getElementById("feel").innerHTML = "danger"
                     }
-                    if (hi >= 105 && hi < 130){
+                    if (hi >= 54){
                         document.getElementById("feel").setAttribute("style", "color:red")
                         document.getElementById("feel").innerHTML = "extremely danger"
-                    }
-                    if (hi >= 130){
-                        document.getElementById("feel").setAttribute("style", "color:red")
-                        document.getElementById("feel").innerHTML = "extra extremely danger"
                     }
                     let now = Date.now()
                     let last = Date.parse(data[0].createdAt)
@@ -75,7 +87,6 @@
                         document.getElementById("status").innerHTML = "Device is offline"
                         showUnknownValues()
                     }
-                    document.getElementById("lasttime").innerHTML = Date()
                 } catch (e){
                     console.log(e)
                     console.error("Cannot fetch from server")
